@@ -49,8 +49,8 @@ const (
 
 // Version represents a single version.
 type Version struct {
-	epoch              part.Uint64
-	release            []part.Uint64
+	epoch              part.BigInt
+	release            []part.BigInt
 	pre                letterNumber
 	post               letterNumber
 	dev                letterNumber
@@ -61,7 +61,7 @@ type Version struct {
 }
 
 type key struct {
-	epoch   part.Uint64
+	epoch   part.BigInt
 	release part.Parts
 	pre     part.Part
 	post    part.Part
@@ -77,7 +77,7 @@ func (k key) compare(o key) int {
 
 type letterNumber struct {
 	letter part.String
-	number part.Uint64
+	number part.BigInt
 }
 
 func (ln letterNumber) isNull() bool {
@@ -104,9 +104,9 @@ func Parse(v string) (Version, error) {
 		return Version{}, xerrors.Errorf("malformed version: %s", v)
 	}
 
-	var epoch, preN, postN, devN part.Uint64
+	var epoch, preN, postN, devN part.BigInt
 	var preL, postL, devL part.String
-	var release []part.Uint64
+	var release []part.BigInt
 	var local string
 	var err error
 
@@ -118,10 +118,10 @@ func Parse(v string) (Version, error) {
 
 		switch name {
 		case "epoch":
-			epoch, err = part.NewUint64(m)
+			epoch, err = part.NewBigInt(m)
 		case "release":
 			for _, str := range strings.Split(m, ".") {
-				val, err := part.NewUint64(str)
+				val, err := part.NewBigInt(str)
 				if err != nil {
 					return Version{}, xerrors.Errorf("error parsing version: %w", err)
 				}
@@ -131,7 +131,7 @@ func Parse(v string) (Version, error) {
 		case "pre_l":
 			preL = part.String(preReleaseAliases[strings.ToLower(m)])
 		case "pre_n":
-			preN, err = part.NewUint64(m)
+			preN, err = part.NewBigInt(m)
 		case "post_l":
 			postL = part.String(postReleaseAliases[strings.ToLower(m)])
 		case "post_n1", "post_n2":
@@ -139,11 +139,11 @@ func Parse(v string) (Version, error) {
 			if postL == "" {
 				postL = "post"
 			}
-			postN, err = part.NewUint64(m)
+			postN, err = part.NewBigInt(m)
 		case "dev_l":
 			devL = part.String(strings.ToLower(m))
 		case "dev_n":
-			devN, err = part.NewUint64(m)
+			devN, err = part.NewBigInt(m)
 		case "local":
 			local = strings.ToLower(m)
 		}
@@ -178,7 +178,7 @@ func Parse(v string) (Version, error) {
 }
 
 // ref. https://github.com/pypa/packaging/blob/a6407e3a7e19bd979e93f58cfc7f6641a7378c46/packaging/version.py#L495
-func cmpkey(epoch part.Uint64, release []part.Uint64, pre, post, dev letterNumber, local string) key {
+func cmpkey(epoch part.BigInt, release []part.BigInt, pre, post, dev letterNumber, local string) key {
 	// Set default values
 	k := key{
 		epoch: epoch,
@@ -189,7 +189,7 @@ func cmpkey(epoch part.Uint64, release []part.Uint64, pre, post, dev letterNumbe
 	}
 
 	// Remove trailing zeros
-	k.release = part.Uint64SliceToParts(release).Normalize()
+	k.release = part.BigIntSliceToParts(release).Normalize()
 
 	// https://github.com/pypa/packaging/blob/a6407e3a7e19bd979e93f58cfc7f6641a7378c46/packaging/version.py#L514-L517
 	if pre.isNull() && post.isNull() && !dev.isNull() {
@@ -216,7 +216,7 @@ func cmpkey(epoch part.Uint64, release []part.Uint64, pre, post, dev letterNumbe
 	if local != "" {
 		var parts part.Parts
 		for _, l := range strings.Split(local, ".") {
-			if p, err := part.NewUint64(l); err == nil {
+			if p, err := part.NewBigInt(l); err == nil {
 				parts = append(parts, p)
 			} else {
 				parts = append(parts, part.NewPreString(l))
@@ -277,29 +277,29 @@ func (v Version) String() string {
 	var buf bytes.Buffer
 
 	// Epoch
-	if v.epoch != 0 {
-		fmt.Fprintf(&buf, "%d!", v.epoch)
+	if v.epoch.Compare(part.Zero) == 1 {
+		fmt.Fprintf(&buf, "%s!", v.epoch)
 	}
 
 	// Release segment
-	fmt.Fprintf(&buf, "%d", v.release[0])
+	fmt.Fprintf(&buf, "%s", v.release[0])
 	for _, r := range v.release[1:len(v.release)] {
-		fmt.Fprintf(&buf, ".%d", r)
+		fmt.Fprintf(&buf, ".%s", r)
 	}
 
 	// Pre-release
 	if !v.pre.isNull() {
-		fmt.Fprintf(&buf, "%s%d", v.pre.letter, v.pre.number)
+		fmt.Fprintf(&buf, "%s%s", v.pre.letter, v.pre.number)
 	}
 
 	// Post-release
 	if !v.post.isNull() {
-		fmt.Fprintf(&buf, ".post%d", v.post.number)
+		fmt.Fprintf(&buf, ".post%s", v.post.number)
 	}
 
 	// Development release
 	if !v.dev.isNull() {
-		fmt.Fprintf(&buf, ".dev%d", v.dev.number)
+		fmt.Fprintf(&buf, ".dev%s", v.dev.number)
 	}
 
 	// Local version segment
@@ -315,7 +315,7 @@ func (v Version) BaseVersion() string {
 	var buf bytes.Buffer
 
 	// Epoch
-	if v.epoch != 0 {
+	if v.epoch.Compare(part.Zero) == 1 {
 		fmt.Fprintf(&buf, "%d!", v.epoch)
 	}
 
@@ -355,4 +355,19 @@ func (v Version) IsPreRelease() bool {
 // IsPostRelease returns if it is a post-release
 func (v Version) IsPostRelease() bool {
 	return !v.post.isNull()
+}
+
+type SortedVersions []Version
+
+func (s SortedVersions) Len() int {
+	return len(s)
+}
+func (s SortedVersions) Less(i, j int) bool {
+	a := s[i]
+	b := s[j]
+
+	return a.LessThan(b)
+}
+func (s SortedVersions) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
