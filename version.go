@@ -316,13 +316,13 @@ func (v Version) BaseVersion() string {
 
 	// Epoch
 	if v.epoch.Compare(part.Zero) == 1 {
-		fmt.Fprintf(&buf, "%d!", v.epoch)
+		fmt.Fprintf(&buf, "%s!", v.epoch.String())
 	}
 
 	// Release segment
-	fmt.Fprintf(&buf, "%d", v.release[0])
+	fmt.Fprintf(&buf, "%s", v.release[0].String())
 	for _, r := range v.release[1:len(v.release)] {
-		fmt.Fprintf(&buf, ".%d", r)
+		fmt.Fprintf(&buf, ".%s", r.String())
 	}
 
 	return buf.String()
