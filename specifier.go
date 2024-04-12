@@ -59,8 +59,19 @@ type specifier struct {
 	original string
 }
 
+// NewSpecifiersWithSanitizer parses a given specifier and returns a new instance of Specifiers
+// it santiizes the version string before parsing it with the given function.
+func NewSpecifiersWithSanitizer(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+	return newSpecifiers(v, sanitizer, opts...)
+}
+
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
 func NewSpecifiers(v string, opts ...SpecifierOption) (Specifiers, error) {
+	return newSpecifiers(v, func(s string) string { return s }, opts...)
+}
+
+// NewSpecifiers parses a given specifier and returns a new instance of Specifiers
+func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
 	c := new(conf)
 
 	// Apply options
@@ -86,7 +97,7 @@ func NewSpecifiers(v string, opts ...SpecifierOption) (Specifiers, error) {
 
 		var specs []specifier
 		for _, single := range ss {
-			s, err := newSpecifier(single)
+			s, err := newSpecifier(single, santizer)
 			if err != nil {
 				return Specifiers{}, err
 			}
@@ -102,7 +113,7 @@ func NewSpecifiers(v string, opts ...SpecifierOption) (Specifiers, error) {
 
 }
 
-func newSpecifier(s string) (specifier, error) {
+func newSpecifier(s string, sanitizer func(s string) string) (specifier, error) {
 	m := specifierRegexp.FindStringSubmatch(s)
 	if m == nil {
 		return specifier{}, xerrors.Errorf("improper specifier: %s", s)
@@ -110,6 +121,7 @@ func newSpecifier(s string) (specifier, error) {
 
 	operator := m[specifierRegexp.SubexpIndex("operator")]
 	version := m[specifierRegexp.SubexpIndex("version")]
+	version = sanitizer(version)
 
 	if operator != "===" {
 		if err := validate(operator, version); err != nil {
