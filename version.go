@@ -6,9 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/xerrors"
-
-	"github.com/aquasecurity/go-version/pkg/part"
+	"github.com/rstudio/go-version/pkg/part"
 )
 
 var (
@@ -101,7 +99,7 @@ func MustParse(v string) Version {
 func Parse(v string) (Version, error) {
 	matches := versionRegex.FindStringSubmatch(v)
 	if matches == nil {
-		return Version{}, xerrors.Errorf("malformed version: %s", v)
+		return Version{}, fmt.Errorf("malformed version: %s", v)
 	}
 
 	var epoch, preN, postN, devN part.BigInt
@@ -123,7 +121,7 @@ func Parse(v string) (Version, error) {
 			for _, str := range strings.Split(m, ".") {
 				val, err := part.NewBigInt(str)
 				if err != nil {
-					return Version{}, xerrors.Errorf("error parsing version: %w", err)
+					return Version{}, fmt.Errorf("error parsing version: %w", err)
 				}
 
 				release = append(release, val)
@@ -148,7 +146,7 @@ func Parse(v string) (Version, error) {
 			local = strings.ToLower(m)
 		}
 		if err != nil {
-			return Version{}, xerrors.Errorf("failed to parse version (%s): %w", v, err)
+			return Version{}, fmt.Errorf("failed to parse version (%s): %w", v, err)
 		}
 	}
 

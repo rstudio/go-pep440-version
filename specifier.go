@@ -1,13 +1,12 @@
 package version
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -35,13 +34,21 @@ func init() {
 		ops = append(ops, regexp.QuoteMeta(k))
 	}
 
-	specifierRegexp = regexp.MustCompile(fmt.Sprintf(
-		`(?i)(?P<operator>(%s))\s*(?P<version>%s(\.\*)?)`,
-		strings.Join(ops, "|"), regex))
+	specifierRegexp = regexp.MustCompile(
+		fmt.Sprintf(
+			`(?i)(?P<operator>(%s))\s*(?P<version>%s(\.\*)?)`,
+			strings.Join(ops, "|"),
+			regex,
+		),
+	)
 
-	validConstraintRegexp = regexp.MustCompile(fmt.Sprintf(
-		`^\s*(\s*(%s)\s*(%s(\.\*)?)\s*\,?)*\s*$`,
-		strings.Join(ops, "|"), regex))
+	validConstraintRegexp = regexp.MustCompile(
+		fmt.Sprintf(
+			`^\s*(\s*(%s)\s*(%s(\.\*)?)\s*\,?)*\s*$`,
+			strings.Join(ops, "|"),
+			regex,
+		),
+	)
 
 	prefixRegexp = regexp.MustCompile(`^([0-9]+)((?:a|b|c|rc)[0-9]+)$`)
 }
@@ -87,7 +94,7 @@ func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOpti
 
 		// Validate the segment
 		if !validConstraintRegexp.MatchString(vv) {
-			return Specifiers{}, xerrors.Errorf("improper constraint: %s", vv)
+			return Specifiers{}, fmt.Errorf("improper constraint: %s", vv)
 		}
 
 		ss := specifierRegexp.FindAllString(vv, -1)
@@ -116,7 +123,7 @@ func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOpti
 func newSpecifier(s string, sanitizer func(s string) string) (specifier, error) {
 	m := specifierRegexp.FindStringSubmatch(s)
 	if m == nil {
-		return specifier{}, xerrors.Errorf("improper specifier: %s", s)
+		return specifier{}, fmt.Errorf("improper specifier: %s", s)
 	}
 
 	operator := m[specifierRegexp.SubexpIndex("operator")]
@@ -144,28 +151,29 @@ func validate(operator, version string) error {
 	}
 	v, err := Parse(version)
 	if err != nil {
-		return xerrors.Errorf("version parse error (%s): %w", v, err)
+		return fmt.Errorf("version parse error (%s): %w", v, err)
 	}
 
 	switch operator {
 	case "", "=", "==", "!=":
 		if hasWildcard && (!v.dev.isNull() || v.local != "") {
-			return xerrors.New("the (non)equality operators don't allow to use a wild card and a dev" +
-				" or local version together")
+			return errors.New(
+				"the (non)equality operators don't allow to use a wild card and a dev or local version together",
+			)
 		}
 	case "~=":
 		if hasWildcard {
-			return xerrors.New("a wild card is not allowed")
+			return errors.New("a wild card is not allowed")
 		} else if len(v.release) < 2 {
-			return xerrors.New("the compatible operator requires at least two digits in the release segment")
+			return errors.New("the compatible operator requires at least two digits in the release segment")
 		} else if v.local != "" {
-			return xerrors.New("local versions cannot be specified")
+			return errors.New("local versions cannot be specified")
 		}
 	default:
 		if hasWildcard {
-			return xerrors.New("a wild card is not allowed")
+			return errors.New("a wild card is not allowed")
 		} else if v.local != "" {
-			return xerrors.New("local versions cannot be specified")
+			return errors.New("local versions cannot be specified")
 		}
 	}
 	return nil
@@ -282,8 +290,8 @@ func specifierCompatible(prospective Version, spec string) bool {
 		prefixElements = append(prefixElements, s)
 	}
 
-	// We want everything but the last item in the version, but we want to ignore post and dev releases and
-	// we want to treat the pre-release as it's own separate segment.
+	// We want everything but the last item in the version, but we want to ignore post and dev releases, and
+	// we want to treat the pre-release as its own separate segment.
 	prefix := strings.Join(prefixElements[:len(prefixElements)-1], ".")
 
 	// Add the prefix notation to the end of our string

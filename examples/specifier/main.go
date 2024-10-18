@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aquasecurity/go-pep440-version"
+	"github.com/rstudio/go-pep440-version"
 )
 
 func main() {
