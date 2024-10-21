@@ -67,9 +67,15 @@ type specifier struct {
 }
 
 // NewSpecifiersWithSanitizer parses a given specifier and returns a new instance of Specifiers
-// it santiizes the version string before parsing it with the given function.
+// it sanitizes the version string before parsing it with the given function.
 func NewSpecifiersWithSanitizer(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
 	return newSpecifiers(v, sanitizer, opts...)
+}
+
+// NewRSpecifiers parses a given specifier and returns a new instance of Specifiers intended for
+// working with R package versions.
+func NewRSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+	return newRSpecifiers(v, func(s string) string { return s }, opts...)
 }
 
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
@@ -78,7 +84,51 @@ func NewSpecifiers(v string, opts ...SpecifierOption) (Specifiers, error) {
 }
 
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
-func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+func newRSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+	c := new(conf)
+
+	// Apply options
+	for _, o := range opts {
+		o.apply(c)
+	}
+
+	var sss [][]specifier
+	for _, vv := range strings.Split(v, "||") {
+		if strings.TrimSpace(vv) == "*" {
+			vv = ">=0.0.0"
+		}
+		vv = strings.ReplaceAll(vv, "-", ".")
+
+		// Validate the segment
+		if !validConstraintRegexp.MatchString(vv) {
+			return Specifiers{}, fmt.Errorf("improper constraint: %s", vv)
+		}
+
+		ss := specifierRegexp.FindAllString(vv, -1)
+		if ss == nil {
+			ss = append(ss, strings.TrimSpace(vv))
+		}
+
+		var specs []specifier
+		for _, single := range ss {
+			s, err := newSpecifier(single, sanitizer)
+			if err != nil {
+				return Specifiers{}, err
+			}
+			specs = append(specs, s)
+		}
+		sss = append(sss, specs)
+	}
+
+	return Specifiers{
+		specifiers: sss,
+		conf:       *c,
+	}, nil
+
+}
+
+// NewSpecifiers parses a given specifier and returns a new instance of Specifiers
+func newSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
 	c := new(conf)
 
 	// Apply options
@@ -104,7 +154,7 @@ func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOpti
 
 		var specs []specifier
 		for _, single := range ss {
-			s, err := newSpecifier(single, santizer)
+			s, err := newSpecifier(single, sanitizer)
 			if err != nil {
 				return Specifiers{}, err
 			}
