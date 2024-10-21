@@ -72,9 +72,60 @@ func NewSpecifiersWithSanitizer(v string, sanitizer func(string) string, opts ..
 	return newSpecifiers(v, sanitizer, opts...)
 }
 
+// NewPermisiveSpecifiers parses a given specifier and returns a new instance of Specifiers. It is
+// similar to NewSpecifiersWithSanitizer but allows dash '-' characters in a version and replaces them
+// with periods.
+func NewPermisiveSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+	return newPermisiveSpecifiers(v, func(s string) string { return s }, opts...)
+}
+
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
 func NewSpecifiers(v string, opts ...SpecifierOption) (Specifiers, error) {
 	return newSpecifiers(v, func(s string) string { return s }, opts...)
+}
+
+// NewSpecifiers parses a given specifier and returns a new instance of Specifiers
+func newPermisiveSpecifiers(v string, santizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+	c := new(conf)
+
+	// Apply options
+	for _, o := range opts {
+		o.apply(c)
+	}
+
+	var sss [][]specifier
+	for _, vv := range strings.Split(v, "||") {
+		if strings.TrimSpace(vv) == "*" {
+			vv = ">=0.0.0"
+		}
+		vv = strings.ReplaceAll(vv, "-", ".")
+
+		// Validate the segment
+		if !validConstraintRegexp.MatchString(vv) {
+			return Specifiers{}, fmt.Errorf("improper constraint: %s", vv)
+		}
+
+		ss := specifierRegexp.FindAllString(vv, -1)
+		if ss == nil {
+			ss = append(ss, strings.TrimSpace(vv))
+		}
+
+		var specs []specifier
+		for _, single := range ss {
+			s, err := newSpecifier(single, santizer)
+			if err != nil {
+				return Specifiers{}, err
+			}
+			specs = append(specs, s)
+		}
+		sss = append(sss, specs)
+	}
+
+	return Specifiers{
+		specifiers: sss,
+		conf:       *c,
+	}, nil
+
 }
 
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
@@ -91,7 +142,6 @@ func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOpti
 		if strings.TrimSpace(vv) == "*" {
 			vv = ">=0.0.0"
 		}
-		vv = strings.ReplaceAll(vv, "-", ".")
 
 		// Validate the segment
 		if !validConstraintRegexp.MatchString(vv) {
