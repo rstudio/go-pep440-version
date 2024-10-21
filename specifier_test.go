@@ -69,6 +69,12 @@ func TestNewConstraints(t *testing.T) {
 		// Cannot use a prefix matching after a .devN version
 		{"==1.0.dev1.*", true},
 		{"!=1.0.dev1.*", true},
+
+		// Replace dashes '-' with dots to form new version segment
+		{"== 3.99-0.14", false},
+		{"==3.99-0.14", false},
+		{"== 3.99.0.14", false},
+		{"==3.99.0.14", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.constraint, func(t *testing.T) {

@@ -91,6 +91,7 @@ func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOpti
 		if strings.TrimSpace(vv) == "*" {
 			vv = ">=0.0.0"
 		}
+		vv = strings.ReplaceAll(vv, "-", ".")
 
 		// Validate the segment
 		if !validConstraintRegexp.MatchString(vv) {
