@@ -158,7 +158,7 @@ func TestNewPermisiveSpecifiers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.constraint, func(t *testing.T) {
-			_, err := NewPermisiveSpecifiers(tt.constraint, func(s string) string { return s })
+			_, err := NewRSpecifiers(tt.constraint, func(s string) string { return s })
 			if tt.wantErr {
 				assert.NotNil(t, err)
 			} else {

@@ -67,16 +67,15 @@ type specifier struct {
 }
 
 // NewSpecifiersWithSanitizer parses a given specifier and returns a new instance of Specifiers
-// it santiizes the version string before parsing it with the given function.
+// it sanitizes the version string before parsing it with the given function.
 func NewSpecifiersWithSanitizer(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
 	return newSpecifiers(v, sanitizer, opts...)
 }
 
-// NewPermisiveSpecifiers parses a given specifier and returns a new instance of Specifiers. It is
-// similar to NewSpecifiersWithSanitizer but allows dash '-' characters in a version and replaces them
-// with periods.
-func NewPermisiveSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
-	return newPermisiveSpecifiers(v, func(s string) string { return s }, opts...)
+// NewRSpecifiers parses a given specifier and returns a new instance of Specifiers intended for
+// working with R package versions.
+func NewRSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+	return newRSpecifiers(v, func(s string) string { return s }, opts...)
 }
 
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
@@ -85,7 +84,7 @@ func NewSpecifiers(v string, opts ...SpecifierOption) (Specifiers, error) {
 }
 
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
-func newPermisiveSpecifiers(v string, santizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+func newRSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
 	c := new(conf)
 
 	// Apply options
@@ -112,7 +111,7 @@ func newPermisiveSpecifiers(v string, santizer func(string) string, opts ...Spec
 
 		var specs []specifier
 		for _, single := range ss {
-			s, err := newSpecifier(single, santizer)
+			s, err := newSpecifier(single, sanitizer)
 			if err != nil {
 				return Specifiers{}, err
 			}
@@ -129,7 +128,7 @@ func newPermisiveSpecifiers(v string, santizer func(string) string, opts ...Spec
 }
 
 // NewSpecifiers parses a given specifier and returns a new instance of Specifiers
-func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
+func newSpecifiers(v string, sanitizer func(string) string, opts ...SpecifierOption) (Specifiers, error) {
 	c := new(conf)
 
 	// Apply options
@@ -155,7 +154,7 @@ func newSpecifiers(v string, santizer func(string) string, opts ...SpecifierOpti
 
 		var specs []specifier
 		for _, single := range ss {
-			s, err := newSpecifier(single, santizer)
+			s, err := newSpecifier(single, sanitizer)
 			if err != nil {
 				return Specifiers{}, err
 			}
