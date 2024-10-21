@@ -88,7 +88,7 @@ func TestNewConstraints(t *testing.T) {
 	}
 }
 
-func TestNewPermisiveSpecifiers(t *testing.T) {
+func TestNewRSpecifiers(t *testing.T) {
 	tests := []struct {
 		constraint string
 		wantErr    bool
