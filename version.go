@@ -39,7 +39,12 @@ const (
 		`(?:` +
 		`(?:(?P<epoch>[0-9]+)!)?` + // epoch
 		`(?P<release>[0-9]+(?:\.[0-9]+)*)` + // release segment
-		`(?P<pre>[-_\.]?(?P<pre_l>(a|b|c|rc|alpha|beta|pre|preview))[-_\.]?(?P<pre_n>[0-9]+)?)?` + // pre-release
+		// The pre-release spellings MUST be ordered so that no alternative is
+		// preceded by one of its own prefixes: Go's regexp is leftmost-first,
+		// so listing "a" before "alpha" makes "alpha" match as just "a",
+		// truncating the version mid-token. pypa/packaging orders its
+		// equivalent alternation the same way, for the same reason.
+		`(?P<pre>[-_\.]?(?P<pre_l>(alpha|a|beta|b|preview|pre|c|rc))[-_\.]?(?P<pre_n>[0-9]+)?)?` + // pre-release
 		`(?P<post>(?:-(?P<post_n1>[0-9]+))|(?:[-_\.]?(?P<post_l>post|rev|r)[-_\.]?(?P<post_n2>[0-9]+)?))?` + // post release
 		`(?P<dev>[-_\.]?(?P<dev_l>dev)[-_\.]?(?P<dev_n>[0-9]+)?)?)` + // dev release
 		`(?:\+(?P<local>[a-z0-9]+(?:[-_\.][a-z0-9]+)*))?` // local version`
